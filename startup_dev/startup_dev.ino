@@ -165,7 +165,7 @@ void setup() {
   motor_b_r.attach(MOTOR_BR_PIN);
   
   // run initialization code
-//  sync_init();
+  sync_init();
 }
 
 void sync_init() {
@@ -226,11 +226,15 @@ void apply_flight_logic() {
   // get RL channel read
   int rl_ch_change = cmap_stick(current_rc_values[RL_CH_ID]);
 
+  // get YAW channel read
+  int yw_ch_change = cmap_stick(current_rc_values[YW_CH_ID]);
+  Serial.println(yw_ch_change);
+
   // calculate motor values
-  int fl_motor_value = throttle_ch_value + (-fb_ch_change) + (rl_ch_change);
-  int fr_motor_value = throttle_ch_value + (-fb_ch_change) + (-rl_ch_change);
-  int bl_motor_value = throttle_ch_value + (fb_ch_change) + (rl_ch_change);
-  int br_motor_value = throttle_ch_value + (fb_ch_change) + (-rl_ch_change);
+  int fl_motor_value = throttle_ch_value + (-fb_ch_change) + (rl_ch_change) + (-yw_ch_change);
+  int fr_motor_value = throttle_ch_value + (-fb_ch_change) + (-rl_ch_change) + (yw_ch_change);
+  int bl_motor_value = throttle_ch_value + (fb_ch_change) + (rl_ch_change) + (yw_ch_change);
+  int br_motor_value = throttle_ch_value + (fb_ch_change) + (-rl_ch_change) + (-yw_ch_change);
 
   // write motor values
   write_motor_values(
