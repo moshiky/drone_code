@@ -19,7 +19,8 @@
 #define EMPTY_CH_ID 4   // CH5
 #define PWR_CH_ID   5   // CH6
 
-#define DELAY_MS  100
+#define MOTOR_SYNC_DELAY_MS  7 * 1000
+#define LOOP_DELAY_MS  100
 
 #define CH_MIN_VALUE  1000
 #define CH_MAX_VALUE  2000
@@ -28,6 +29,9 @@
 #define MOTOR_SYNC_VALUE  20  // connected, but not spinning
 #define MOTOR_MIN_VALUE  30   // spinning slowest
 #define MOTOR_MAX_VALUE  165  // spinning fastest
+
+#define POWER_OFF_MODE  false
+#define POWER_ON_MODE   true
 
 // ========== Global variables
 uint16_t current_rc_values[NUM_RC_CHANNELS];
@@ -39,7 +43,7 @@ int rcChannelPins[] = {
   YW_CH_PIN, EMPTY_CH_PIN, PWR_CH_PIN
 };
 
-bool wasOnLastTime = false;
+bool last_power_mode = POWER_OFF_MODE;   //  false = OFF, true = ON
 
 int last_motor_f_l;
 int last_motor_f_r;
@@ -131,8 +135,26 @@ void setup() {
 }
 
 void init() {
-  // write motors 'syncronization' signal value
-  
+  // write motors syncronization signal value
+  write_motor_values(MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE);
+
+  // wait for syncronization process to complete
+  delay(MOTOR_SYNC_DELAY_MS);
+}
+
+void handle_power_mode_change(bool current_power_mode) {
+  if (current_power_mode != last_power_mode) {
+
+    // write relevant value
+    int value_to_write = MOTOR_SYNC_VALUE;  // value for OFF mode
+    if (current_power_mode == POWER_ON_MODE) {
+       value_to_write = MOTOR_MIN_VALUE;
+    }
+    write_motor_values(value_to_write, value_to_write, value_to_write, value_to_write);
+    
+    // store current mode
+    last_power_mode = current_power_mode;
+  }
 }
 
 void loop() {
@@ -147,12 +169,17 @@ void loop() {
 
   // run only if power is on
   if (power_ch_value > PWR_ON_VALUE) {
-    Serial.println("I'm ON");
+    // check for power mode change and handle it
+    handle_power_mode_change(POWER_ON_MODE);
+
+    // apply flight logic
+    apply_flight_logic();
   }
   else {
-    Serial.println("I'm OFF");
+    // check for power mode change and handle it
+    handle_power_mode_change(POWER_OFF_MODE);
   }
 
   // wait for a while..
-  delay(DELAY_MS);
+  delay(LOOP_DELAY_MS);
 }
