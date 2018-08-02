@@ -31,9 +31,12 @@
 #define CH_MIN_VALUE  1000
 #define CH_MAX_VALUE  2000
 
+#define CH_TR_MIN   5   //  accessible min value
+#define CH_TR_MAX   90  //  accessible max value
+
 #define PWR_ON_VALUE  90
 #define MOTOR_SYNC_VALUE  20  // connected, but not spinning
-#define MOTOR_MIN_VALUE  30   // spinning slowest
+#define MOTOR_MIN_VALUE  58   // spinning slowest
 #define MOTOR_MAX_VALUE  165  // spinning fastest
 
 #define POWER_OFF_MODE  false
@@ -51,6 +54,11 @@ int rcChannelPins[] = {
 
 bool last_power_mode = POWER_OFF_MODE;   //  false = OFF, true = ON
 
+Servo motor_f_l;
+Servo motor_f_r;
+Servo motor_b_l;
+Servo motor_b_r;
+
 int last_motor_f_l;
 int last_motor_f_r;
 int last_motor_b_l;
@@ -64,7 +72,7 @@ void rc_read_values() {
   interrupts();
 
   for (int i = 0; i < NUM_RC_CHANNELS; ++i) {
-    current_rc_values[i] = cmap_pin(current_rc_values[i])
+    current_rc_values[i] = cmap_pin(current_rc_values[i]);
   }
 }
 
@@ -104,7 +112,7 @@ int mclip(int original_value) {
     return MOTOR_SYNC_VALUE;
   }
   else {
-    return clip_value(mapped_value, MOTOR_MIN_VALUE, MOTOR_MAX_VALUE);
+    return clip_value(original_value, MOTOR_MIN_VALUE, MOTOR_MAX_VALUE);
   }
 }
 
@@ -139,12 +147,17 @@ void setup() {
   enableInterrupt(EMPTY_CH_PIN, empty_ch_change_handler, CHANGE);
   enableInterrupt(PWR_CH_PIN, pwr_ch_change_handler, CHANGE);
 
+  // attach each output pin to related servo object
+  motor_f_l.attach(MOTOR_FL_PIN);
+  motor_f_r.attach(MOTOR_FR_PIN);
+  motor_b_l.attach(MOTOR_BL_PIN);
+  motor_b_r.attach(MOTOR_BR_PIN);
+  
   // run initialization code
-  init();
-
+  sync_init();
 }
 
-void init() {
+void sync_init() {
   // write motors syncronization signal value
   write_motor_values(MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE, MOTOR_SYNC_VALUE);
 
@@ -173,13 +186,7 @@ void loop() {
 
   // get power mode read
   int power_ch_value = current_rc_values[PWR_CH_ID];
-  power_ch_value = cmap_pin(power_ch_value);
-
-  // get throttle channel value
-  int power_ch_value = current_rc_values[PWR_CH_ID];
-  power_ch_value = cmap_pin(power_ch_value);
   
-
   // run only if power is on
   if (power_ch_value > PWR_ON_VALUE) {
     // check for power mode change and handle it
