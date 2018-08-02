@@ -3,17 +3,23 @@
 #include <Servo.h>
 
 #define SERIAL_PORT_SPEED 57600
+
+#define MOTOR_FL_PIN  8
+#define MOTOR_FR_PIN  9
+#define MOTOR_BL_PIN  10
+#define MOTOR_BR_PIN  11
+
 #define NUM_RC_CHANNELS 6
 
 #define RL_CH_PIN     2   // CH1
-#define UD_CH_PIN     3   // CH2
+#define FB_CH_PIN     3   // CH2
 #define TR_CH_PIN     4   // CH3
 #define YW_CH_PIN     5   // CH4
 #define EMPTY_CH_PIN  6   // CH5
 #define PWR_CH_PIN    7   // CH6
 
 #define RL_CH_ID    0   // CH1
-#define UD_CH_ID    1   // CH2
+#define FB_CH_ID    1   // CH2
 #define TR_CH_ID    2   // CH3
 #define YW_CH_ID    3   // CH4
 #define EMPTY_CH_ID 4   // CH5
@@ -39,7 +45,7 @@ uint32_t pin_high_start[NUM_RC_CHANNELS];
 volatile uint16_t rc_shared[NUM_RC_CHANNELS];
 
 int rcChannelPins[] = {
-  RL_CH_PIN, UD_CH_PIN, TR_CH_PIN, 
+  RL_CH_PIN, FB_CH_PIN, TR_CH_PIN, 
   YW_CH_PIN, EMPTY_CH_PIN, PWR_CH_PIN
 };
 
@@ -56,6 +62,10 @@ void rc_read_values() {
   noInterrupts();
   memcpy(current_rc_values, (const void *)rc_shared, sizeof(rc_shared));
   interrupts();
+
+  for (int i = 0; i < NUM_RC_CHANNELS; ++i) {
+    current_rc_values[i] = cmap_pin(current_rc_values[i])
+  }
 }
 
 void pin_change_handler(uint8_t channel_id, uint8_t input_pin) {
@@ -68,7 +78,7 @@ void pin_change_handler(uint8_t channel_id, uint8_t input_pin) {
 }
 
 void rl_ch_change_handler()     { pin_change_handler(RL_CH_ID,    RL_CH_PIN); }
-void ud_ch_change_handler()     { pin_change_handler(UD_CH_ID,    UD_CH_PIN); }
+void fb_ch_change_handler()     { pin_change_handler(FB_CH_ID,    FB_CH_PIN); }
 void tr_ch_change_handler()     { pin_change_handler(TR_CH_ID,    TR_CH_PIN); }
 void yw_ch_change_handler()     { pin_change_handler(YW_CH_ID,    YW_CH_PIN); }
 void empty_ch_change_handler()  { pin_change_handler(EMPTY_CH_ID, EMPTY_CH_PIN); }
@@ -123,7 +133,7 @@ void setup() {
 
   // enable interrupt on rc pins
   enableInterrupt(RL_CH_PIN, rl_ch_change_handler, CHANGE);
-  enableInterrupt(UD_CH_PIN, ud_ch_change_handler, CHANGE);
+  enableInterrupt(FB_CH_PIN, fb_ch_change_handler, CHANGE);
   enableInterrupt(TR_CH_PIN, tr_ch_change_handler, CHANGE);
   enableInterrupt(YW_CH_PIN, yw_ch_change_handler, CHANGE);
   enableInterrupt(EMPTY_CH_PIN, empty_ch_change_handler, CHANGE);
@@ -161,11 +171,14 @@ void loop() {
   // read current rc values
   rc_read_values();
 
-  // print current power read
+  // get power mode read
   int power_ch_value = current_rc_values[PWR_CH_ID];
   power_ch_value = cmap_pin(power_ch_value);
-  Serial.print("POWER = ");
-  Serial.println(power_ch_value);
+
+  // get throttle channel value
+  int power_ch_value = current_rc_values[PWR_CH_ID];
+  power_ch_value = cmap_pin(power_ch_value);
+  
 
   // run only if power is on
   if (power_ch_value > PWR_ON_VALUE) {
@@ -183,3 +196,8 @@ void loop() {
   // wait for a while..
   delay(LOOP_DELAY_MS);
 }
+
+void apply_flight_logic() {
+  
+}
+
