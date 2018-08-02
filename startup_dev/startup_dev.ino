@@ -39,6 +39,8 @@
 #define MOTOR_MIN_VALUE  58   // spinning slowest
 #define MOTOR_MAX_VALUE  165  // spinning fastest
 
+#define MAX_STICK_CHANGE  10
+
 #define POWER_OFF_MODE  false
 #define POWER_ON_MODE   true
 
@@ -107,6 +109,10 @@ int cmap_pin(int original_value) {
   return cmap(original_value, CH_MIN_VALUE, CH_MAX_VALUE, 0, 100);
 }
 
+int cmap_stick(int original_value) {
+  return cmap(original_value, 0, 100, -MAX_STICK_CHANGE, MAX_STICK_CHANGE);
+}
+
 int mclip(int original_value) {
   if (MOTOR_SYNC_VALUE == original_value) {
     return MOTOR_SYNC_VALUE;
@@ -126,6 +132,11 @@ void write_motor_values(int f_l, int f_r,
     // write values to motors
     motor_f_l.write(last_motor_f_l);   motor_f_r.write(last_motor_f_r);
     motor_b_l.write(last_motor_b_l);   motor_b_r.write(last_motor_b_r);
+
+//    // report values
+//    Serial.println("-------------------------------");
+//    Serial.print(last_motor_f_l);   Serial.print("     ");   Serial.println(last_motor_f_r);
+//    Serial.print(last_motor_b_l);   Serial.print("     ");   Serial.println(last_motor_b_r);
 }
 
 // ========== Logic functions
@@ -154,7 +165,7 @@ void setup() {
   motor_b_r.attach(MOTOR_BR_PIN);
   
   // run initialization code
-  sync_init();
+//  sync_init();
 }
 
 void sync_init() {
@@ -205,6 +216,26 @@ void loop() {
 }
 
 void apply_flight_logic() {
+  // get throttle channel read
+  int throttle_ch_value = \
+    cmap(current_rc_values[TR_CH_ID], CH_TR_MIN, CH_TR_MAX, MOTOR_MIN_VALUE, MOTOR_MAX_VALUE);
   
+  // get FB channel read
+  int fb_ch_change = cmap_stick(current_rc_values[FB_CH_ID]);
+
+  // get RL channel read
+  int rl_ch_change = cmap_stick(current_rc_values[RL_CH_ID]);
+
+  // calculate motor values
+  int fl_motor_value = throttle_ch_value + (-fb_ch_change) + (rl_ch_change);
+  int fr_motor_value = throttle_ch_value + (-fb_ch_change) + (-rl_ch_change);
+  int bl_motor_value = throttle_ch_value + (fb_ch_change) + (rl_ch_change);
+  int br_motor_value = throttle_ch_value + (fb_ch_change) + (-rl_ch_change);
+
+  // write motor values
+  write_motor_values(
+    fl_motor_value, fr_motor_value,
+    bl_motor_value, br_motor_value
+  );
 }
 
